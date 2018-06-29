@@ -2,7 +2,7 @@
 extern crate bitmask;
 extern crate chrono;
 
-use chrono::{DateTime, TimeZone, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 mod consts;
 
 bitmask! {
@@ -23,10 +23,10 @@ bitmask! {
 
         /// Ad selection, reporting and delivery
         ///
-        /// The collection of information and combination with previously collected information, to select and 
+        /// The collection of information and combination with previously collected information, to select and
         /// deliver advertisements and to measure the delivery and effectiveness of such advertisements. This includes
         /// using previously collected information about user interests to select ads, processing data about what
-        /// advertisements were shown, how often they were shown, when and where they were shown, and whether they 
+        /// advertisements were shown, how often they were shown, when and where they were shown, and whether they
         /// took any action related to the advertisement, including for example clicking an ad or making a purchase.
         AdSelection = 4,
 
@@ -128,19 +128,23 @@ pub struct ConsentString {
     pub vendor_list_version: u16,
     pub purposes_allowed: Purposes,
     pub max_vendor_id: u16,
-    pub vendor_consents: Vec<bool>
+    pub vendor_consents: Vec<bool>,
 }
 
 #[derive(Debug)]
 pub(crate) struct BitDecoder<T> {
     base: T,
     offset: u8,
-    leftover: u8
+    leftover: u8,
 }
 
-impl<T: Iterator<Item=char> + std::fmt::Debug> BitDecoder<T> {
+impl<T: Iterator<Item = char> + std::fmt::Debug> BitDecoder<T> {
     pub fn new(base: T) -> Self {
-        BitDecoder { base: base.into_iter(), offset: 0, leftover: 0 }
+        BitDecoder {
+            base: base.into_iter(),
+            offset: 0,
+            leftover: 0,
+        }
     }
     pub fn take(&mut self, n: u8) -> Option<usize> {
         if self.offset == 0 {
@@ -172,10 +176,16 @@ impl ConsentString {
         let mut chars = str.chars();
         let version = take_6(&mut chars)?;
         let created = take_36(&mut chars)?;
-        let created = NaiveDateTime::from_timestamp((created / 10) as i64, ((created % 10) * 100_000_000) as u32);
+        let created = NaiveDateTime::from_timestamp(
+            (created / 10) as i64,
+            ((created % 10) * 100_000_000) as u32,
+        );
         let created = DateTime::<Utc>::from_utc(created, Utc);
         let last_updated = take_36(&mut chars)?;
-        let last_updated = NaiveDateTime::from_timestamp((last_updated / 10) as i64, ((last_updated % 10) * 100_000_000) as u32);
+        let last_updated = NaiveDateTime::from_timestamp(
+            (last_updated / 10) as i64,
+            ((last_updated % 10) * 100_000_000) as u32,
+        );
         let last_updated = DateTime::<Utc>::from_utc(last_updated, Utc);
         let cmp_id = take_12(&mut chars)?;
         let cmp_version = take_12(&mut chars)?;
@@ -185,11 +195,11 @@ impl ConsentString {
         let purposes_allowed = Purposes::from_raw(purpose(&mut chars)?);
         let mut bd = BitDecoder::new(chars);
         let max_vendor_id = bd.take(16)? as u16;
-        
+
         let range_encoding = bd.take_bool()?;
         let vendor_consents: Vec<bool> = if range_encoding {
             let default_consent = bd.take_bool()?;
-            let mut consents = vec![default_consent; max_vendor_id as usize];
+            let mut consents = vec![default_consent; (max_vendor_id + 1) as usize];
             let num_entries = bd.take(12)?;
             for _ in 0..num_entries {
                 let range = bd.take_bool()?;
@@ -197,7 +207,7 @@ impl ConsentString {
                     let start_vendor_id = bd.take(16)? as usize;
                     let end_vendor_id = bd.take(16)? as usize;
                     for vendor_id in start_vendor_id..=end_vendor_id {
-                        consents[vendor_id] = !default_consent;    
+                        consents[vendor_id] = !default_consent;
                     }
                 } else {
                     let vendor_id = bd.take(16)? as usize;
@@ -206,7 +216,8 @@ impl ConsentString {
             }
             consents
         } else {
-            let mut rv = Vec::with_capacity(max_vendor_id as usize);
+            let mut rv = Vec::with_capacity((max_vendor_id + 1) as usize);
+            rv.push(false);
             for _ in 0..max_vendor_id {
                 rv.push(bd.take_bool()?);
             }
@@ -225,7 +236,7 @@ impl ConsentString {
             vendor_list_version,
             purposes_allowed,
             max_vendor_id,
-            vendor_consents
+            vendor_consents,
         })
     }
 }
@@ -239,7 +250,8 @@ mod tests {
         let consent_string = ConsentString::parse(input).unwrap();
 
         assert_eq!(consent_string.version, 1);
-        let expected_time = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(1510082155, 400_000_000), Utc);
+        let expected_time =
+            DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(1510082155, 400_000_000), Utc);
         assert_eq!(consent_string.created, expected_time);
         assert_eq!(consent_string.last_updated, expected_time);
         assert_eq!(consent_string.cmp_id, 7);
@@ -247,9 +259,12 @@ mod tests {
         assert_eq!(consent_string.consent_screen, 3);
         assert_eq!(consent_string.consent_language, ['e', 'n']);
         assert_eq!(consent_string.vendor_list_version, 8);
-        assert_eq!(consent_string.purposes_allowed, Purpose::StorageAndAccess | Purpose::Personalization | Purpose::AdSelection);
+        assert_eq!(
+            consent_string.purposes_allowed,
+            Purpose::StorageAndAccess | Purpose::Personalization | Purpose::AdSelection
+        );
         assert_eq!(consent_string.max_vendor_id, 2011);
-        let mut consents = vec![true; 2011];
+        let mut consents = vec![true; 2012];
         consents[9] = false;
         assert_eq!(consent_string.vendor_consents, consents);
     }
