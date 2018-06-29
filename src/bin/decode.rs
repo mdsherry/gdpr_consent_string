@@ -10,7 +10,7 @@ fn main() {
     let consent_str = arg.unwrap_or_else(|| {
         let mut buf = String::new();
         stdin().read_line(&mut buf).expect("Unable to read from stdin");
-        buf
+        buf.trim().to_string()
     });
 
     let gdpr = ConsentString::parse(&consent_str);
