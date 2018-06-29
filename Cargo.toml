@@ -1,0 +1,8 @@
+[package]
+name = "gdpr-consent-string"
+version = "0.1.0"
+authors = ["Mark Sherry <mdsherry@gmail.com>"]
+
+[dependencies]
+bitmask = "0.4"
+chrono = "0.4"
