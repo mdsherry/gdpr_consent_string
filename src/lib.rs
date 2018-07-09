@@ -2,7 +2,7 @@
 extern crate bitmask;
 extern crate chrono;
 
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 mod consts;
 
 bitmask! {
@@ -74,15 +74,6 @@ fn take_12<T: Iterator<Item = char>>(it: &mut T) -> Option<u16> {
     Some((a as u16) << 6 | (b as u16))
 }
 
-fn take_4<T: Iterator<Item = char>>(it: &mut T) -> Option<u32> {
-    let a = it.next().map(decode)?;
-    let b = it.next().map(decode)?;
-    let c = it.next().map(decode)?;
-    let d = it.next().map(decode)?;
-
-    Some((a as u32) << 18 | (b as u32) << 12 | (c as u32) << 6 | (d as u32))
-}
-
 fn take_36<T: Iterator<Item = char>>(it: &mut T) -> Option<u64> {
     let a = it.next().map(decode)?;
     let b = it.next().map(decode)?;
@@ -92,7 +83,11 @@ fn take_36<T: Iterator<Item = char>>(it: &mut T) -> Option<u64> {
     let f = it.next().map(decode)?;
 
     Some(
-        (a as u64) << 30 | (b as u64) << 24 | (c as u64) << 18 | (d as u64) << 12 | (e as u64) << 6
+        (a as u64) << 30
+            | (b as u64) << 24
+            | (c as u64) << 18
+            | (d as u64) << 12
+            | (e as u64) << 6
             | (f as u64),
     )
 }
@@ -111,8 +106,10 @@ fn purpose<T: Iterator<Item = char>>(it: &mut T) -> Option<u32> {
     let c = it.next().map(decode)?;
     let d = it.next().map(decode)?;
     Some(
-        (REVERSE_BITS[d as usize] as u32) << 18 | (REVERSE_BITS[c as usize] as u32) << 12
-            | (REVERSE_BITS[b as usize] as u32) << 6 | (REVERSE_BITS[a as usize] as u32),
+        (REVERSE_BITS[d as usize] as u32) << 18
+            | (REVERSE_BITS[c as usize] as u32) << 12
+            | (REVERSE_BITS[b as usize] as u32) << 6
+            | (REVERSE_BITS[a as usize] as u32),
     )
 }
 

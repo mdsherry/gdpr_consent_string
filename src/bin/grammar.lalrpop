@@ -1,0 +1,50 @@
+use std::str::FromStr;
+use ast::{Expr, Field, Opcode, Value};
+
+grammar;
+
+FieldTerm: Field = {
+    "version" => Field::Version,
+    "created" => Field::Created,
+    "lastupdated" => Field::LastUpdated,
+    "cmpid" => Field::CmpId,
+    "cmpversion" => Field::CmpVersion,
+    "consentscreen" => Field::ConsentScreen,
+    "consentlanguage" => Field::ConsentLanguage,
+    "vendorlistversion" => Field::VendorListVersion,
+    "purposes" => Field::Purposes,
+    "maxvendorid" => Field::MaxVendorId,
+    "consents" => Field::Consents
+};
+
+pub ExprT: Expr = {
+    <l:ExprT> "|" <r:Factor> => Expr::Or(Box::new(l), Box::new(r)),
+    Factor,
+};
+
+Factor: Expr = {
+    <l:Factor> "&" <r:Term> => Expr::And(Box::new(l), Box::new(r)),
+    Term
+}
+
+Term: Expr = {
+    <f: FieldTerm> <o: Op> <v: Value> => Expr::Op(f, o, v),
+    "(" <e: ExprT> ")" => e,
+    "!" <e:Term> => Expr::Not(Box::new(e)),
+}
+
+Value: Value = {
+    <s:r"[0-9]+"> => Value::Int(u64::from_str(s).unwrap()),
+    <s:r"[a-z]+"> => Value::Str(s.to_string())
+}
+
+Op: Opcode = {
+    ">" => Opcode::Gt,
+    "<" => Opcode::Lt,
+    ">=" => Opcode::Ge,
+    "<=" => Opcode::Le,
+    "=" => Opcode::Eq,
+    "!=" => Opcode::Ne,
+    "has" => Opcode::In,
+    "hasn't" => Opcode::NotIn,
+}
